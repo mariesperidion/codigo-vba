@@ -1,0 +1,78 @@
+Sub MoverSKUs()
+
+    Dim criterios() As String
+    Dim ws1 As Worksheet
+    Dim wsLog As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim destRow As Long
+    Dim minCriterio As Long
+    Dim contadorCriterio1 As Long
+    Dim contadorCriterio2 As Long
+    Dim fila As Range
+    Dim rng As Range
+    Dim col As Range
+
+    ' Establece las hojas de origen y destino
+    Set ws1 = ThisWorkbook.Sheets("Pedidos")
+    Set wsLog = ThisWorkbook.Sheets("Log Eliminados") ' Asegúrate de tener una hoja "Log Eliminados"
+
+    ' Limpia el contenido de la hoja "Log Eliminados" en las columnas A a Y
+    wsLog.Range("A2:Y1000").ClearContents
+
+    ' Define los criterios 1 y 2
+    criterios = Split("H749518120,H749518100,H74939352020", ",")
+    
+    ' Encuentra la última fila en la hoja de origen
+    lastRow = ws1.Cells(ws1.Rows.Count, "L").End(xlUp).Row
+
+    ' Obtén el mínimo entre criterio 1 y criterio 2
+    minCriterio = Application.WorksheetFunction.Min(Sheets("Calculos").Cells(8, 2).Value, Sheets("Calculos").Cells(9, 2).Value)
+
+    ' Contar la cantidad de registros que cumplen con cada criterio
+    For i = 1 To lastRow
+        If IsInArray(ws1.Cells(i, 12).Value, criterios) Then
+            If IsInArray(ws1.Cells(i, 12).Value, Split("H749518120,H749518100,H74939352020", ",")) Then
+                contadorCriterio1 = contadorCriterio1 + 1
+            ElseIf IsInArray(ws1.Cells(i, 12).Value, Split("H749A70200", ",")) Then
+                contadorCriterio2 = contadorCriterio2 + 1
+            End If
+        End If
+    Next i
+
+    ' Eliminar registros hasta que ambos criterios alcancen el mínimo
+    Do While contadorCriterio1 > minCriterio Or contadorCriterio2 > minCriterio
+        Set fila = Nothing
+        For Each rng In ws1.UsedRange.Rows
+            If contadorCriterio1 > minCriterio And IsInArray(ws1.Cells(rng.Row, 12).Value, Split("H749518120,H749518100,H74939352020", ",")) Then
+                If fila Is Nothing Then Set fila = rng
+                ws1.Rows(rng.Row).EntireRow.Copy Destination:=wsLog.Cells(destRow, 1).EntireRow
+                ws1.Rows(rng.Row).EntireRow.Delete
+                destRow = destRow + 1
+                contadorCriterio1 = contadorCriterio1 - 1
+                Exit For
+            ElseIf contadorCriterio2 > minCriterio And IsInArray(ws1.Cells(rng.Row, 12).Value, Split("H749A70200", ",")) Then
+                If fila Is Nothing Then Set fila = rng
+                ws1.Rows(rng.Row).EntireRow.Copy Destination:=wsLog.Cells(destRow, 1).EntireRow
+                ws1.Rows(rng.Row).EntireRow.Delete
+                destRow = destRow + 1
+                contadorCriterio2 = contadorCriterio2 - 1
+                Exit For
+            End If
+        Next rng
+        If contadorCriterio1 = minCriterio And contadorCriterio2 = minCriterio Then Exit Do
+    Loop
+
+End Sub
+
+
+Function IsInArray(val As Variant, arr As Variant) As Boolean
+    Dim i As Long
+    For i = LBound(arr) To UBound(arr)
+        If arr(i) = val Then
+            IsInArray = True
+            Exit Function
+        End If
+    Next i
+End Function
+
